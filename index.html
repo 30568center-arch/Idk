@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sakaeoschool Duty Checker</title>
+  <style>
+    body { font-family: "Prompt", sans-serif; margin:0; padding:0; background: linear-gradient(135deg,#4ade80,#ffd700); display:flex; justify-content:center; align-items:center; min-height:100vh; }
+    .container { background:#fff; border-radius:1rem; padding:2rem; max-width:500px; width:100%; box-shadow:0 4px 10px rgba(0,0,0,0.2); }
+    h1,h2 { text-align:center; color:#166534; }
+    input, select, button { width:100%; padding:0.6rem; margin:0.5rem 0; border-radius:0.5rem; border:1px solid #ccc; font-size:1rem; }
+    button { background:#4ade80; border:none; color:#000; font-weight:bold; cursor:pointer; }
+    button:hover { background:#22c55e; color:#fff; }
+    .hidden { display:none; }
+    .link { color:#2563eb; cursor:pointer; font-size:0.9rem; }
+    table { width:100%; border-collapse:collapse; margin-top:1rem; }
+    th, td { border:1px solid #ccc; padding:0.5rem; text-align:center; }
+    th { background:#facc15; }
+    .logout { margin-top:1rem; background:#ef4444; color:#fff; }
+    .small-btn { padding:0.3rem; font-size:0.8rem; margin:0.2rem; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <div class="container" id="auth-section">
+    <h1>Sakaeoschool Duty Checker</h1>
+    <h2 id="form-title">เข้าสู่ระบบ</h2>
+
+    <!-- Login -->
+    <div id="login-form">
+      <input type="email" id="login-email" placeholder="อีเมลโรงเรียน">
+      <input type="password" id="login-password" placeholder="รหัสผ่าน">
+      <button onclick="login()">เข้าสู่ระบบ</button>
+      <p><span class="link" onclick="showRegister()">สมัครบัญชี</span> | <span class="link" onclick="showForgot()">ลืมรหัสผ่าน</span></p>
+    </div>
+
+    <!-- Register -->
+    <div id="register-form" class="hidden">
+      <input type="email" id="reg-email" placeholder="อีเมลโรงเรียน">
+      <input type="password" id="reg-password" placeholder="รหัสผ่าน">
+      <select id="reg-role">
+        <option value="student">นักเรียน</option>
+        <option value="teacher">ครู</option>
+        <option value="admin">แอดมิน</option>
+      </select>
+      <button onclick="register()">สมัครสมาชิก</button>
+      <p><span class="link" onclick="showLogin()">กลับไปเข้าสู่ระบบ</span></p>
+    </div>
+
+    <!-- Forgot -->
+    <div id="forgot-form" class="hidden">
+      <input type="email" id="forgot-email" placeholder="อีเมลโรงเรียน">
+      <button onclick="resetPassword()">รีเซ็ทรหัสผ่าน</button>
+      <p><span class="link" onclick="showLogin()">กลับไปเข้าสู่ระบบ</span></p>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="container hidden" id="dashboard-section">
+    <h2 id="welcome"></h2>
+    <div id="dashboard-content"></div>
+    <button class="logout" onclick="logout()">ออกจากระบบ</button>
+  </div>
+
+  <script>
+    // Initialize storage
+    const users = JSON.parse(localStorage.getItem('users') || '{}');
+    let duties = JSON.parse(localStorage.getItem('duties') || '[]'); // array of {date,class,student,checked}
+    let currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+
+    // Show forms
+    function showLogin(){ document.getElementById('form-title').innerText='เข้าสู่ระบบ'; document.getElementById('login-form').classList.remove('hidden'); document.getElementById('register-form').classList.add('hidden'); document.getElementById('forgot-form').classList.add('hidden'); }
+    function showRegister(){ document.getElementById('form-title').innerText='สมัครบัญชี'; document.getElementById('login-form').classList.add('hidden'); document.getElementById('register-form').classList.remove('hidden'); document.getElementById('forgot-form').classList.add('hidden'); }
+    function showForgot(){ document.getElementById('form-title').innerText='ลืมรหัสผ่าน'; document.getElementById('login-form').classList.add('hidden'); document.getElementById('register-form').classList.add('hidden'); document.getElementById('forgot-form').classList.remove('hidden'); }
+
+    // Register
+    function register(){
+      const email=document.getElementById('reg-email').value.trim();
+      const password=document.getElementById('reg-password').value;
+      const role=document.getElementById('reg-role').value;
+      if(!email.endsWith('@sakaeoschool.ac.th')){alert('กรุณาใช้อีเมลโรงเรียน'); return;}
+      if(users[email]){alert('อีเมลนี้มีบัญชีอยู่แล้ว'); return;}
+      users[email]={password,role};
+      localStorage.setItem('users',JSON.stringify(users));
+      alert('สมัครสมาชิกสำเร็จ'); showLogin();
+    }
+
+    // Login
+    function login(){
+      const email=document.getElementById('login-email').value.trim();
+      const password=document.getElementById('login-password').value;
+      if(!users[email]||users[email].password!==password){alert('อีเมลหรือรหัสผ่านไม่ถูกต้อง');return;}
+      currentUser={email,role:users[email].role};
+      localStorage.setItem('currentUser',JSON.stringify(currentUser));
+      loadDashboard();
+    }
+
+    // Forgot
+    function resetPassword(){
+      const email=document.getElementById('forgot-email').value.trim();
+      if(!users[email]){alert('ไม่พบบัญชีนี้');return;}
+      const newPass=prompt('กรอกรหัสผ่านใหม่:');
+      if(newPass){users[email].password=newPass; localStorage.setItem('users',JSON.stringify(users)); alert('รีเซ็ทรหัสผ่านเรียบร้อย'); showLogin();}
+    }
+
+    // Logout
+    function logout(){ currentUser=null; localStorage.removeItem('currentUser'); document.getElementById('dashboard-section').classList.add('hidden'); document.getElementById('auth-section').classList.remove('hidden'); }
+
+    // Dashboard
+    function loadDashboard(){
+      document.getElementById('auth-section').classList.add('hidden');
+      document.getElementById('dashboard-section').classList.remove('hidden');
+      document.getElementById('welcome').innerText='สวัสดี '+currentUser.email;
+      renderDashboard();
+    }
+
+    function renderDashboard(){
+      const dash=document.getElementById('dashboard-content');
+      dash.innerHTML='';
+      if(currentUser.role==='student'){
+        let tbl=document.createElement('table');
+        tbl.innerHTML='<tr><th>วันที่</th><th>ชั้น</th><th>นักเรียน</th><th>เช็คชื่อ</th></tr>';
+        duties.forEach((d,i)=>{
+          if(d.student===currentUser.email){
+            const tr=document.createElement('tr');
+            tr.innerHTML=`<td>${d.date}</td><td>${d.class}</td><td>${d.student}</td><td><input type="checkbox" ${d.checked?'checked':''} onclick="toggleCheck(${i})"></td>`;
+            tbl.appendChild(tr);
+          }
+        });
+        dash.appendChild(tbl);
+      } else if(currentUser.role==='teacher'){
+        dash.innerHTML='<button onclick="addDuty()">เพิ่มเวร</button>';
+        let tbl=document.createElement('table');
+        tbl.innerHTML='<tr><th>วันที่</th><th>ชั้น</th><th>นักเรียน</th><th>เช็คชื่อ</th><th>ลบ</th></tr>';
+        duties.forEach((d,i)=>{
+          const tr=document.createElement('tr');
+          tr.innerHTML=`<td>${d.date}</td><td>${d.class}</td><td>${d.student}</td><td>${d.checked? '✅':'❌'}</td><td><button class="small-btn" onclick="deleteDuty(${i})">ลบ</button></td>`;
+          tbl.appendChild(tr);
+        });
+        dash.appendChild(tbl);
+      } else if(currentUser.role==='admin'){
+        dash.innerHTML='<h3>รายงานภาพรวม</h3>';
+        let tbl=document.createElement('table');
+        tbl.innerHTML='<tr><th>วันที่</th><th>ชั้น</th><th>นักเรียน</th><th>เช็คชื่อ</th></tr>';
+        duties.forEach(d=>{
+          const tr=document.createElement('tr');
+          tr.innerHTML=`<td>${d.date}</td><td>${d.class}</td><td>${d.student}</td><td>${d.checked?'✅':'❌'}</td>`;
+          tbl.appendChild(tr);
+        });
+        dash.appendChild(tbl);
+      }
+    }
+
+    // Teacher add duty
+    function addDuty(){
+      const date=prompt('วันที่ (เช่น 2025-09-05):');
+      const cls=prompt('ชั้นเรียน:');
+      const student=prompt('อีเมลนักเรียน:');
+      if(date && cls && student){ duties.push({date,class:cls,student,checked:false}); localStorage.setItem('duties',JSON.stringify(duties)); renderDashboard();}
+    }
+
+    // Toggle check
+    function toggleCheck(i){ duties[i].checked=!duties[i].checked; localStorage.setItem('duties',JSON.stringify(duties)); }
+
+    // Delete duty
+    function deleteDuty(i){ duties.splice(i,1); localStorage.setItem('duties',JSON.stringify(duties)); renderDashboard(); }
+
+    if(currentUser) loadDashboard();
+  </script>
+</body>
+</html>
